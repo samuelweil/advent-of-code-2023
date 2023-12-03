@@ -1,6 +1,11 @@
 mod day1;
 
-use std::{env, process::exit};
+use std::{
+    env,
+    fs::File,
+    io::{self, BufRead},
+    process::exit,
+};
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -15,9 +20,13 @@ fn main() {
         .expect("Please provide a valid day number");
     println!("Running day {}", day);
 
+    let file_name = format!("inputs/day_{}.txt", day);
+    let file = File::open(&file_name).expect(format!("Could not open {}", &file_name).as_str());
+    let lines = io::BufReader::new(file).lines().map(|l| l.unwrap());
+
     match day {
-        1 => day1::run(String::from("")),
-        _ => eprintln!("Day {} not implemented", day),
+        1 => day1::run(lines),
+        _ => println!("Day {} not implemented", day),
     }
 }
 
