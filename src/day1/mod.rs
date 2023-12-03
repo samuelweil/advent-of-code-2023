@@ -8,12 +8,24 @@ pub fn run<'a, T: Iterator<Item = String>>(inputs: T) {
 struct DigitFinder(Regex);
 
 fn parse_digit(m: Match<'_>) -> Option<u32> {
-    m.as_str().parse::<u32>().map_or(Option::None, Option::Some)
+    match m.as_str() {
+        "zero" => return Option::Some(0),
+        "one" => return Option::Some(1),
+        "two" => return Option::Some(2),
+        "three" => return Option::Some(3),
+        "four" => return Option::Some(4),
+        "five" => return Option::Some(5),
+        "six" => return Option::Some(6),
+        "seven" => return Option::Some(7),
+        "eight" => return Option::Some(8),
+        "nine" => return Option::Some(9),
+        c => c.parse::<u32>().map_or(Option::None, Option::Some)
+    }
 }
 
 impl DigitFinder {
     fn new() -> DigitFinder {
-        let re = Regex::new(r"\d").unwrap();
+        let re = Regex::new(r"\d|zero|one|two|three|four|five|six|seven|eight|nine").unwrap();
         DigitFinder(re)
     }
 
@@ -60,5 +72,19 @@ mod tests {
     fn test_parsing_number() {
         let result = calibration(INPUT_1.lines().map(String::from));
         assert_eq!(vec![12, 38, 15, 77], result);
+    }
+
+    const INPUT_2: &str = "two1nine
+    eightwothree
+    abcone2threexyz
+    xtwone3four
+    4nineeightseven2
+    zoneight234
+    7pqrstsixteen";
+
+    #[test]
+    fn test_parsing_digits_by_name() {
+        let result = calibration(INPUT_2.lines().map(String::from));
+        assert_eq!(vec![29, 83, 13, 24, 42, 14, 76], result);
     }
 }
