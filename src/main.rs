@@ -1,3 +1,5 @@
+mod day1;
+
 use std::{env, process::exit};
 
 fn main() {
@@ -8,8 +10,15 @@ fn main() {
         exit(1);
     }
 
-    let day = args[1].parse::<u32>().expect("Please provide a valid day number");
+    let day = args[1]
+        .parse::<u32>()
+        .expect("Please provide a valid day number");
     println!("Running day {}", day);
+
+    match day {
+        1 => day1::run(String::from("")),
+        _ => eprintln!("Day {} not implemented", day),
+    }
 }
 
 #[cfg(test)]
