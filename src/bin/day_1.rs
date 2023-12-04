@@ -1,7 +1,4 @@
-use std::{
-    fs::File,
-    io::{BufRead, BufReader},
-};
+use advent_of_code_2023::io::read_lines;
 
 use regex::{Match, Regex};
 
@@ -10,9 +7,7 @@ const DIGIT_NAME_REGEX: &str = r"one|two|three|four|five|six|seven|eight|nine";
 
 fn main() {
     let file_name = format!("inputs/day_{}.txt", 1);
-    let file = File::open(&file_name).expect(format!("Could not open {}", &file_name).as_str());
-    let lines = BufReader::new(file).lines().map(|l| l.unwrap());
-    run(lines);
+    run(read_lines(&file_name));
 }
 
 pub fn run<'a, T>(inputs: T)
@@ -38,8 +33,8 @@ where
     println!("Day 1, Star 2: {}", calib_2);
 }
 
-fn parse_digit<'a,T: Into<&'a str>>(m: T) -> Option<u32> {
-    match m.into()  {
+fn parse_digit<'a, T: Into<&'a str>>(m: T) -> Option<u32> {
+    match m.into() {
         "one" => return Option::Some(1),
         "two" => return Option::Some(2),
         "three" => return Option::Some(3),
@@ -81,7 +76,7 @@ impl SimpleCalibrationParser {
 
 struct AdvancedCalibrationParser {
     regex: Regex,
-    rev_regex: Regex
+    rev_regex: Regex,
 }
 
 fn reversed_str<'a, T: Into<&'a str>>(s: T) -> String {
@@ -91,27 +86,26 @@ fn reversed_str<'a, T: Into<&'a str>>(s: T) -> String {
 impl AdvancedCalibrationParser {
     fn new() -> AdvancedCalibrationParser {
         let regex_str = format!(r"\d|{}", DIGIT_NAME_REGEX);
-        
-        // We reverse the regex so that we can find the last instance. 
+
+        // We reverse the regex so that we can find the last instance.
         let reverse_name_regex_str = reversed_str(DIGIT_NAME_REGEX);
         // Single digit detection doesn't need to be reversed
         let reverse_name_str = format!(r"\d|{}", &reverse_name_regex_str);
 
         AdvancedCalibrationParser {
             regex: Regex::new(&regex_str).unwrap(),
-            rev_regex: Regex::new(&reverse_name_str).unwrap()   
+            rev_regex: Regex::new(&reverse_name_str).unwrap(),
         }
     }
 
     pub fn parse_line(&self, line: &str) -> Option<i32> {
         let first_match = self.regex.find(line)?;
-        
+
         let reverse_line = reversed_str(line);
         let last_match = self.rev_regex.find(&reverse_line)?;
 
         let first_digit = parse_digit(first_match.as_str())?;
         let last_digit = parse_digit(&*reversed_str(last_match))?;
-
 
         let config_value = format!("{}{}", first_digit, last_digit)
             .parse::<i32>()
