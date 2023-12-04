@@ -1,9 +1,12 @@
-use std::{io::{BufRead, BufReader}, fs::File};
+use std::{
+    fs::File,
+    io::{BufRead, BufReader},
+};
 
-use regex::{Regex, Match};
+use regex::{Match, Regex};
 
-const CHAR_REGEX: &str = r"\d";
-const ALL_REGEX: &str = r"\d|one|two|three|four|five|six|seven|eight|nine";
+const DIGIT_REGEX: &str = r"\d";
+const DIGIT_NAME_REGEX: &str = r"one|two|three|four|five|six|seven|eight|nine";
 
 fn main() {
     let file_name = format!("inputs/day_{}.txt", 1);
@@ -16,8 +19,8 @@ pub fn run<'a, T>(inputs: T)
 where
     T: Iterator<Item = String>,
 {
-    let mut parser_1 = CalibrationParser::new(CHAR_REGEX);
-    let mut parser_2 = CalibrationParser::new(ALL_REGEX);
+    let parser_1 = SimpleCalibrationParser::new();
+    let parser_2 = AdvancedCalibrationParser::new();
 
     let mut calib_1 = 0;
     let mut calib_2 = 0;
@@ -35,10 +38,8 @@ where
     println!("Day 1, Star 2: {}", calib_2);
 }
 
-struct CalibrationParser(Regex);
-
-fn parse_digit(m: Match<'_>) -> Option<u32> {
-    match m.as_str() {
+fn parse_digit<'a,T: Into<&'a str>>(m: T) -> Option<u32> {
+    match m.into()  {
         "one" => return Option::Some(1),
         "two" => return Option::Some(2),
         "three" => return Option::Some(3),
@@ -52,13 +53,15 @@ fn parse_digit(m: Match<'_>) -> Option<u32> {
     }
 }
 
-impl CalibrationParser {
-    fn new(pattern: &str) -> CalibrationParser {
-        let re = Regex::new(pattern).unwrap();
-        CalibrationParser(re)
+struct SimpleCalibrationParser(Regex);
+
+impl SimpleCalibrationParser {
+    fn new() -> SimpleCalibrationParser {
+        let re = Regex::new(DIGIT_REGEX).unwrap();
+        SimpleCalibrationParser(re)
     }
 
-    pub fn parse_line(&mut self, line: &str) -> Option<i32> {
+    pub fn parse_line(&self, line: &str) -> Option<i32> {
         let matches: Vec<Match> = self.0.find_iter(line).collect();
 
         if matches.len() < 1 {
@@ -67,6 +70,48 @@ impl CalibrationParser {
 
         let first_digit = parse_digit(matches[0])?;
         let last_digit = parse_digit(matches[matches.len() - 1])?;
+
+        let config_value = format!("{}{}", first_digit, last_digit)
+            .parse::<i32>()
+            .map_or(None, Some)?;
+
+        Some(config_value)
+    }
+}
+
+struct AdvancedCalibrationParser {
+    regex: Regex,
+    rev_regex: Regex
+}
+
+fn reversed_str<'a, T: Into<&'a str>>(s: T) -> String {
+    s.into().chars().rev().collect::<String>()
+}
+
+impl AdvancedCalibrationParser {
+    fn new() -> AdvancedCalibrationParser {
+        let regex_str = format!(r"\d|{}", DIGIT_NAME_REGEX);
+        
+        // We reverse the regex so that we can find the last instance. 
+        let reverse_name_regex_str = reversed_str(DIGIT_NAME_REGEX);
+        // Single digit detection doesn't need to be reversed
+        let reverse_name_str = format!(r"\d|{}", &reverse_name_regex_str);
+
+        AdvancedCalibrationParser {
+            regex: Regex::new(&regex_str).unwrap(),
+            rev_regex: Regex::new(&reverse_name_str).unwrap()   
+        }
+    }
+
+    pub fn parse_line(&self, line: &str) -> Option<i32> {
+        let first_match = self.regex.find(line)?;
+        
+        let reverse_line = reversed_str(line);
+        let last_match = self.rev_regex.find(&reverse_line)?;
+
+        let first_digit = parse_digit(first_match.as_str())?;
+        let last_digit = parse_digit(&*reversed_str(last_match))?;
+
 
         let config_value = format!("{}{}", first_digit, last_digit)
             .parse::<i32>()
@@ -86,8 +131,8 @@ mod tests {
     treb7uchet";
 
     #[test]
-    fn test_parsing_number() {
-        let mut parser = CalibrationParser::new(CHAR_REGEX);
+    fn simplecalibrationparser_parses_digits() {
+        let parser = SimpleCalibrationParser::new();
         let result = INPUT_1
             .lines()
             .map(|s| parser.parse_line(s))
@@ -106,8 +151,8 @@ mod tests {
     7pqrstsixteen";
 
     #[test]
-    fn test_parsing_digits_by_name() {
-        let mut parser = CalibrationParser::new(ALL_REGEX);
+    fn advancedcalibration_parser_parses_digit_names() {
+        let parser = AdvancedCalibrationParser::new();
         let result = INPUT_2
             .lines()
             .map(|s| parser.parse_line(s))
@@ -116,13 +161,25 @@ mod tests {
 
         assert_eq!(vec![29, 83, 13, 24, 42, 14, 76], result);
         assert_eq!(281, result.iter().sum());
+    }
 
-        let result_2 = INPUT_1
+    #[test]
+    fn advancedcalibration_parser_parses_digit_chars() {
+        let parser = AdvancedCalibrationParser::new();
+        let result = INPUT_1
             .lines()
             .map(|s| parser.parse_line(s))
             .filter_map(|s| s)
             .collect::<Vec<i32>>();
 
-        assert_eq!(vec![12, 38, 15, 77], result_2);
+        assert_eq!(vec![12, 38, 15, 77], result);
+    }
+
+    #[test]
+    fn advancedcalibration_parser_parses_digit_names_with_overlap() {
+        let parser = AdvancedCalibrationParser::new();
+        let result = parser.parse_line("28gtbkszmrtmnineoneightmx");
+
+        assert_eq!(result, Some(28));
     }
 }
