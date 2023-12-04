@@ -1,7 +1,16 @@
-use regex::{Match, Regex};
+use std::{io::{BufRead, BufReader}, fs::File};
+
+use regex::{Regex, Match};
 
 const CHAR_REGEX: &str = r"\d";
 const ALL_REGEX: &str = r"\d|one|two|three|four|five|six|seven|eight|nine";
+
+fn main() {
+    let file_name = format!("inputs/day_{}.txt", 1);
+    let file = File::open(&file_name).expect(format!("Could not open {}", &file_name).as_str());
+    let lines = BufReader::new(file).lines().map(|l| l.unwrap());
+    run(lines);
+}
 
 pub fn run<'a, T>(inputs: T)
 where
@@ -70,7 +79,6 @@ impl CalibrationParser {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::day1::CalibrationParser;
 
     const INPUT_1: &str = "1abc2
     pqr3stu8vwx
