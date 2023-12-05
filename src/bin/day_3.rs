@@ -5,7 +5,7 @@ use once_cell::sync::Lazy;
 use regex::Regex;
 
 fn main() {
-    let schematic = Schematic::parse(read_lines("day_3.txt"));
+    let schematic = Schematic::parse(read_lines("inputs/day_3.txt"));
 
     {
         let result = schematic
@@ -15,6 +15,9 @@ fn main() {
             .sum::<i32>();
         println!("Day 3, Star 1: {}", result);
     }
+
+    let result = schematic.gears().iter().map(|g| g.ratio).sum::<i32>();
+    println!("Day 3, Star 2: {}", result);
 }
 
 struct Schematic {
@@ -53,6 +56,35 @@ impl Schematic {
             .collect::<Vec<_>>()
     }
 
+    pub fn gears(&self) -> Vec<Gear> {
+        self.raw_symbols
+            .iter()
+            .filter_map(|sym| {
+                let adj_part_nos = self.adjacent_parts_nos(sym);
+                if adj_part_nos.len() == 2 {
+                    Some(Gear {
+                        ratio: adj_part_nos[0] * adj_part_nos[1],
+                    })
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>()
+    }
+
+    fn adjacent_parts_nos(&self, symbol: &Symbol) -> Vec<i32> {
+        self.raw_parts
+            .iter()
+            .filter_map(|p| {
+                if p.is_adjacent(symbol) {
+                    Some(p.number)
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>()
+    }
+
     fn parse_line(line_no: usize, line: &str) -> (Vec<Part>, Vec<Symbol>) {
         let parts = PART_REGEX
             .find_iter(line)
@@ -75,6 +107,11 @@ impl Schematic {
             .map(|m| Symbol {
                 row: line_no,
                 column: m.start(),
+                symbol: m
+                    .as_str()
+                    .chars()
+                    .next()
+                    .expect("Could read symbol character"),
             })
             .collect();
 
@@ -110,9 +147,15 @@ impl Part {
 }
 
 #[derive(PartialEq, Debug, Copy, Clone)]
+struct Gear {
+    ratio: i32,
+}
+
+#[derive(PartialEq, Debug, Copy, Clone)]
 struct Symbol {
     row: usize,
     column: usize,
+    symbol: char,
 }
 
 static PART_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"\d+").unwrap());
@@ -146,6 +189,24 @@ mod tests {
     }
 
     #[test]
+    fn test_find_gears() {
+        let input = "467..114..
+        ...*......
+        ..35..633.
+        ......#...
+        617*......
+        .....+.58.
+        ..592.....
+        ......755.
+        ...$.*....
+        .664.598..";
+
+        let schematic = Schematic::parse(input.lines());
+        let gears = schematic.gears();
+        assert_eq!(gears, vec![Gear { ratio: 16345 }, Gear { ratio: 451490 }]);
+    }
+
+    #[test]
     fn test_parse_parts() {
         let (parts, symbols) = Schematic::parse_line(1, "467..114..");
         assert_eq!(
@@ -175,7 +236,18 @@ mod tests {
         assert_eq!(parts.len(), 0);
         assert_eq!(
             symbols,
-            vec![Symbol { row: 3, column: 3 }, Symbol { row: 3, column: 5 }]
+            vec![
+                Symbol {
+                    row: 3,
+                    column: 3,
+                    symbol: '$'
+                },
+                Symbol {
+                    row: 3,
+                    column: 5,
+                    symbol: '*'
+                }
+            ]
         );
     }
 
@@ -191,7 +263,14 @@ mod tests {
                 end: 3,
             }]
         );
-        assert_eq!(symbols, vec![Symbol { row: 8, column: 3 }])
+        assert_eq!(
+            symbols,
+            vec![Symbol {
+                row: 8,
+                column: 3,
+                symbol: '*'
+            }]
+        )
     }
 
     #[test]
@@ -204,7 +283,11 @@ mod tests {
         };
 
         for i in 0..3 {
-            let symbol = Symbol { row: 7, column: i };
+            let symbol = Symbol {
+                row: 7,
+                column: i,
+                symbol: '+',
+            };
             assert!(part.is_adjacent(&symbol), "{} should be adjacent", i);
         }
     }
@@ -219,7 +302,11 @@ mod tests {
         };
 
         for i in 0..3 {
-            let symbol = Symbol { row: 9, column: i };
+            let symbol = Symbol {
+                row: 9,
+                column: i,
+                symbol: '+',
+            };
             assert!(part.is_adjacent(&symbol), "{} should be adjacent", i);
         }
     }
