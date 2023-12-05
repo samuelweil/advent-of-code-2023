@@ -1,3 +1,10 @@
+#[macro_export]
+macro_rules! lazy {
+    ( $x: expr) => {
+        Lazy::new(|| $x)
+    };
+}
+
 pub mod io {
     use std::{
         fs::File,
