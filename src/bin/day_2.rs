@@ -25,8 +25,6 @@ fn main() {
     println!("Day 2, Star 2: {}", sum_powers);
 }
 
-
-
 #[derive(PartialEq, Debug)]
 struct Hand {
     red: i32,
@@ -114,7 +112,7 @@ impl Game {
         let mut min_hand = Hand {
             red: 0,
             blue: 0,
-            green: 0
+            green: 0,
         };
 
         for hand in &self.hands {
@@ -131,29 +129,35 @@ impl Game {
 
         min_hand
     }
-
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
 
-    fn valid_games<T: Iterator<Item=U>, U: AsRef<str>>(lines: T, max_val_hand: &Hand) -> Vec<i32> {
-        lines.filter_map(|line| {
-            let game = Game::from(line.as_ref());
-            if game.is_valid(max_val_hand) {
-                Some(game.id)
-            } else {
-                None
-            }
-        }).collect()
+    fn valid_games<T: Iterator<Item = U>, U: AsRef<str>>(
+        lines: T,
+        max_val_hand: &Hand,
+    ) -> Vec<i32> {
+        lines
+            .filter_map(|line| {
+                let game = Game::from(line.as_ref());
+                if game.is_valid(max_val_hand) {
+                    Some(game.id)
+                } else {
+                    None
+                }
+            })
+            .collect()
     }
-    
-    fn powers<T: Iterator<Item=U>, U: AsRef<str>>(lines: T) -> Vec<i32> {
-        lines.map(|line| {
-            let game = Game::from(line.as_ref());
-            game.min_val_hand().power()
-        }).collect()
+
+    fn powers<T: Iterator<Item = U>, U: AsRef<str>>(lines: T) -> Vec<i32> {
+        lines
+            .map(|line| {
+                let game = Game::from(line.as_ref());
+                game.min_val_hand().power()
+            })
+            .collect()
     }
 
     #[test]
@@ -222,12 +226,23 @@ mod test {
     fn test_lowest_hand() {
         let game = Game::from("Game 1: 3 blue, 4 red; 1 red, 2 green, 6 blue; 2 green");
         let result = game.min_val_hand();
-        assert_eq!(result, Hand { red: 4, blue: 6, green: 2 });
+        assert_eq!(
+            result,
+            Hand {
+                red: 4,
+                blue: 6,
+                green: 2
+            }
+        );
     }
 
     #[test]
     fn test_power_of_hand() {
-        let hand = Hand { red: 4, blue: 6, green: 2 };
+        let hand = Hand {
+            red: 4,
+            blue: 6,
+            green: 2,
+        };
         let result = hand.power();
         assert_eq!(result, 48);
     }
@@ -237,5 +252,4 @@ mod test {
         let result = powers(TEST_INPUT.lines());
         assert_eq!(vec![48, 12, 1560, 630, 36], result);
     }
-
 }
