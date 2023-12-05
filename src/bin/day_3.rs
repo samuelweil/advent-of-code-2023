@@ -5,24 +5,88 @@ use once_cell::sync::Lazy;
 use regex::Regex;
 
 fn main() {
-    let (parts, symbols) = parse_schematic(read_lines("inputs/day_3.txt"));
-    let valid_parts = valid_parts(parts, &symbols);
-    let result = valid_parts.iter().map(|p| p.number).sum::<i32>();
-    println!("Day 3, Star 1: {}", result);
+    let schematic = Schematic::parse(read_lines("day_3.txt"));
+
+    {
+        let result = schematic
+            .valid_parts()
+            .iter()
+            .map(|p| p.number)
+            .sum::<i32>();
+        println!("Day 3, Star 1: {}", result);
+    }
 }
 
-fn valid_parts(parts: Vec<Part>, symbols: &[Symbol]) -> Vec<Part> {
-    parts
-        .into_iter()
-        .filter(|p| is_adjacent(p, symbols))
-        .collect::<Vec<_>>()
+struct Schematic {
+    raw_parts: Vec<Part>,
+    raw_symbols: Vec<Symbol>,
 }
 
-fn is_adjacent(part: &Part, symbols: &[Symbol]) -> bool {
-    symbols.into_iter().any(|s| part.is_adjacent(s))
+impl Schematic {
+    pub fn parse<T: Iterator<Item = U>, U: AsRef<str>>(lines: T) -> Self {
+        let mut raw_parts = Vec::new();
+        let mut raw_symbols = Vec::new();
+
+        for (line_no, line) in lines.enumerate() {
+            let (p, s) = Self::parse_line(line_no, line.as_ref().trim());
+            raw_parts.extend(p);
+            raw_symbols.extend(s);
+        }
+
+        Schematic {
+            raw_parts,
+            raw_symbols,
+        }
+    }
+
+    pub fn valid_parts(&self) -> Vec<Part> {
+        let parts = &self.raw_parts[..];
+        parts
+            .into_iter()
+            .filter_map(|p| {
+                if Self::is_adjacent(p, &self.raw_symbols) {
+                    Some(*p)
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>()
+    }
+
+    fn parse_line(line_no: usize, line: &str) -> (Vec<Part>, Vec<Symbol>) {
+        let parts = PART_REGEX
+            .find_iter(line)
+            .map(|m| {
+                let number = m.as_str().parse::<i32>().expect("Failed to parse number");
+                let start = m.start();
+                let end = m.end();
+
+                Part {
+                    number,
+                    row: line_no,
+                    start,
+                    end,
+                }
+            })
+            .collect();
+
+        let symbols = SYMBOL_REGEX
+            .find_iter(line)
+            .map(|m| Symbol {
+                row: line_no,
+                column: m.start(),
+            })
+            .collect();
+
+        (parts, symbols)
+    }
+
+    fn is_adjacent(part: &Part, symbols: &[Symbol]) -> bool {
+        symbols.into_iter().any(|s| part.is_adjacent(s))
+    }
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Copy, Clone)]
 struct Part {
     number: i32,
     row: usize,
@@ -45,7 +109,7 @@ impl Part {
     }
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Copy, Clone)]
 struct Symbol {
     row: usize,
     column: usize,
@@ -53,49 +117,6 @@ struct Symbol {
 
 static PART_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"\d+").unwrap());
 static SYMBOL_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"[^\d\.]").unwrap());
-
-fn parse_schematic<I: AsRef<str>, T: Iterator<Item = I>>(
-    schematic: T,
-) -> (Vec<Part>, Vec<Symbol>) {
-    let mut parts = Vec::new();
-    let mut symbols = Vec::new();
-
-    for (line_no, line) in schematic.enumerate() {
-        let (p, s) = parse_schematic_line(line_no, line.as_ref().trim());
-        parts.extend(p);
-        symbols.extend(s);
-    }
-
-    (parts, symbols)
-}
-
-fn parse_schematic_line(line_no: usize, line: &str) -> (Vec<Part>, Vec<Symbol>) {
-    let parts = PART_REGEX
-        .find_iter(line)
-        .map(|m| {
-            let number = m.as_str().parse::<i32>().expect("Failed to parse number");
-            let start = m.start();
-            let end = m.end();
-
-            Part {
-                number,
-                row: line_no,
-                start,
-                end,
-            }
-        })
-        .collect();
-
-    let symbols = SYMBOL_REGEX
-        .find_iter(line)
-        .map(|m| Symbol {
-            row: line_no,
-            column: m.start(),
-        })
-        .collect();
-
-    (parts, symbols)
-}
 
 #[cfg(test)]
 mod tests {
@@ -114,18 +135,19 @@ mod tests {
         ...$.*....
         .664.598..";
 
-        let (parts, symbols) = parse_schematic(input.lines());
-        let result = valid_parts(parts, &symbols)
+        let schematic = Schematic::parse(input.lines());
+        let part_nos = schematic
+            .valid_parts()
             .iter()
             .map(|p| p.number)
             .collect::<Vec<_>>();
 
-        assert_eq!(result, vec![467, 35, 633, 617, 592, 755, 664, 598]);
+        assert_eq!(part_nos, vec![467, 35, 633, 617, 592, 755, 664, 598]);
     }
 
     #[test]
     fn test_parse_parts() {
-        let (parts, symbols) = parse_schematic_line(1, "467..114..");
+        let (parts, symbols) = Schematic::parse_line(1, "467..114..");
         assert_eq!(
             parts,
             vec![
@@ -148,7 +170,7 @@ mod tests {
 
     #[test]
     fn test_parse_symbols() {
-        let (parts, symbols) = parse_schematic_line(3, "...$.*....");
+        let (parts, symbols) = Schematic::parse_line(3, "...$.*....");
 
         assert_eq!(parts.len(), 0);
         assert_eq!(
@@ -159,7 +181,7 @@ mod tests {
 
     #[test]
     fn test_parse_mixed() {
-        let (parts, symbols) = parse_schematic_line(8, "617*......");
+        let (parts, symbols) = Schematic::parse_line(8, "617*......");
         assert_eq!(
             parts,
             vec![Part {
