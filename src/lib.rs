@@ -1,3 +1,17 @@
+#[macro_export]
+macro_rules! lazy {
+    ( $x: expr) => {
+        Lazy::new(|| $x)
+    };
+}
+
+#[macro_export]
+macro_rules! regex {
+    ( $x:literal) => {
+        Lazy::new(|| Regex::new($x).unwrap())
+    };
+}
+
 pub mod io {
     use std::{
         fs::File,
