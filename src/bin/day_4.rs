@@ -3,14 +3,20 @@ use once_cell::sync::Lazy;
 use regex::Regex;
 
 fn main() {
-    let result = read_lines("inputs/day_4.txt")
-        .map(|line| {
-            let card = Card::from(&line);
-            score(card.matches())
-        })
-        .sum::<i32>();
+    let cards = read_lines("inputs/day_4.txt")
+        .map(|line| Card::from(&line))
+        .collect::<Vec<_>>();
 
-    println!("Day 4, Star 1: {}", result);
+    println!(
+        "Day 4, Star 1: {}",
+        cards
+            .iter()
+            .map(|card| { score(card.matches()) })
+            .sum::<i32>()
+    );
+
+    let n_cards = total_scratchcards(&cards[..]);
+    println!("Day 4, Star 2: {}", n_cards);
 }
 
 static CARD_REGEX: Lazy<Regex> = regex!(r"Card .+: (?<winning>.+) \| (?<mine>.+)");
@@ -51,6 +57,20 @@ fn score(matches: i32) -> i32 {
     } else {
         2 * score(matches - 1)
     }
+}
+
+fn total_scratchcards(cards: &[Card]) -> usize {
+    let mut instances: Vec<usize> = vec![1; cards.len()];
+
+    for (idx, card) in cards.iter().enumerate() {
+        let card_instances = instances[idx];
+        let matches = card.matches();
+        for i in 1..(matches + 1) {
+            instances[idx + i as usize] += card_instances;
+        }
+    }
+
+    instances.iter().sum::<usize>()
 }
 
 fn unwrap_group<'a>(captures: &'a regex::Captures, name: &str) -> &'a str {
@@ -98,5 +118,22 @@ mod test {
         assert_eq!(score(2), 2);
         assert_eq!(score(3), 4);
         assert_eq!(score(4), 8);
+    }
+
+    #[test]
+    fn test_total_scratchcards() {
+        let input = "Card 1: 41 48 83 86 17 | 83 86  6 31 17  9 48 53
+        Card 2: 13 32 20 16 61 | 61 30 68 82 17 32 24 19
+        Card 3:  1 21 53 59 44 | 69 82 63 72 16 21 14  1
+        Card 4: 41 92 73 84 69 | 59 84 76 51 58  5 54 83
+        Card 5: 87 83 26 28 32 | 88 30 70 12 93 22 82 36
+        Card 6: 31 18 13 56 72 | 74 77 10 23 35 67 36 11";
+
+        let cards = input
+            .split('\n')
+            .map(|line| Card::from(line))
+            .collect::<Vec<_>>();
+
+        assert_eq!(total_scratchcards(&cards), 30);
     }
 }
