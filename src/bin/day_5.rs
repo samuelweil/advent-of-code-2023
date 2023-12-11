@@ -1,8 +1,40 @@
 use std::{fmt::Debug, ops::Range, str::FromStr};
 
+use once_cell::sync::Lazy;
+use regex::Regex;
+
+use advent_of_code_2023::regex;
+
 fn main() {
     println!("Day 5 Star 1: {}", 0);
 }
+
+struct Almanac {
+    seeds: Vec<isize>,
+}
+
+impl Almanac {
+    fn parse<T: Iterator<Item = U>, U: AsRef<str>>(lines: T) -> Almanac {
+        for line in lines {
+            let line_ref = line.as_ref();
+            if let Some(captures) = SEED_REGEX.captures(line_ref) {
+                let seeds = captures
+                    .name("seeds")
+                    .unwrap()
+                    .as_str()
+                    .split_whitespace()
+                    .map(|s| s.parse::<isize>().unwrap())
+                    .collect::<Vec<_>>();
+
+                return Almanac { seeds };
+            }
+        }
+
+        Almanac { seeds: vec![] }
+    }
+}
+
+static SEED_REGEX: Lazy<Regex> = regex!(r"seeds: (?<seeds>.+)");
 
 struct Mapping {
     ranges: Vec<MappingRange>,
@@ -57,6 +89,12 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_almanac_parse_seeds() {
+        let almanac = Almanac::parse("seeds: 79 14 55 13".lines());
+        assert_eq!(almanac.seeds, vec![79, 14, 55, 13]);
+    }
 
     #[test]
     fn test_mapping_within_range() {
