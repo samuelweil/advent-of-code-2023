@@ -1,4 +1,4 @@
-use std::{fmt::Debug, ops::Range};
+use std::ops::Range;
 
 use once_cell::sync::Lazy;
 use regex::Regex;
@@ -12,14 +12,25 @@ fn main() {
     let star_1 = almanac
         .seeds
         .iter()
-        .map(|seed_id| almanac.seed(*seed_id).location)
-        .min();
+        .map(|seed| almanac.seed(*seed).location)
+        .min()
+        .unwrap();
 
-    println!("Day 5 Star 1: {}", star_1.unwrap());
+    println!("Day 5 Star 1: {}", star_1);
+
+    let star_2 = almanac
+        .seed_ranges
+        .iter()
+        .flat_map(|range| range.clone().map(|seed| almanac.seed(seed).location))
+        .min()
+        .unwrap();
+
+    println!("Day 5 Star 2: {}", star_2);
 }
 
 struct Almanac {
     seeds: Vec<isize>,
+    seed_ranges: Vec<Range<isize>>,
     seed_to_soil: Mapping,
     soil_to_fertilizer: Mapping,
     fertilizer_to_water: Mapping,
@@ -33,6 +44,7 @@ impl Default for Almanac {
     fn default() -> Self {
         Almanac {
             seeds: vec![],
+            seed_ranges: vec![0..0],
             seed_to_soil: Mapping { ranges: vec![] },
             soil_to_fertilizer: Mapping { ranges: vec![] },
             fertilizer_to_water: Mapping { ranges: vec![] },
@@ -62,6 +74,10 @@ impl Almanac {
             }
 
             if let Some(seeds) = parse_seeds(line) {
+                result.seed_ranges = seeds
+                    .chunks(2)
+                    .map(|chunk| chunk[0]..(chunk[0] + chunk[1]))
+                    .collect::<Vec<_>>();
                 result.seeds = seeds;
             } else if line.starts_with("seed-to-soil map") {
                 result.seed_to_soil = parse_maps(&mut lines);
@@ -188,6 +204,12 @@ mod tests {
     fn test_almanac_parse_seeds() {
         let almanac = Almanac::parse("seeds: 79 14 55 13".lines());
         assert_eq!(almanac.seeds, vec![79, 14, 55, 13]);
+    }
+
+    #[test]
+    fn test_almanac_parse_seed_ranges() {
+        let almanac = Almanac::parse("seeds: 79 14 55 13".lines());
+        assert_eq!(almanac.seed_ranges, vec![79..93, 55..68]);
     }
 
     const TEST_INPUT: &str = "seeds: 79 14 55 13
