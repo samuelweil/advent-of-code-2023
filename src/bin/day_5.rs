@@ -1,4 +1,7 @@
-use std::ops::Range;
+use std::{
+    ops::Range,
+    sync::{mpsc, Arc, RwLock},
+};
 
 use once_cell::sync::Lazy;
 use regex::Regex;
@@ -18,14 +21,31 @@ fn main() {
 
     println!("Day 5 Star 1: {}", star_1);
 
-    let star_2 = almanac
-        .seed_ranges
-        .iter()
-        .flat_map(|range| range.clone().map(|seed| almanac.seed(seed).location))
-        .min()
-        .unwrap();
+    let seed_ranges = almanac.seed_ranges.clone();
+    let shared_almanac = Arc::new(RwLock::new(almanac));
+    let (tx, rx) = mpsc::channel::<isize>();
 
-    println!("Day 5 Star 2: {}", star_2);
+    for range in seed_ranges.into_iter() {
+        let almanac = shared_almanac.clone();
+        let tx = tx.clone();
+
+        std::thread::spawn(move || {
+            let rwlock = almanac.read().unwrap();
+            let min = range.map(|seed| rwlock.seed(seed).location).min().unwrap();
+            tx.send(min).unwrap();
+        });
+    }
+
+    // Drop this so the channel closes when all the threads stop running and drop their
+    // references
+    drop(tx);
+
+    let mut result = vec![];
+    for seed in rx {
+        result.push(seed);
+    }
+
+    println!("Day 5 Star 2: {}", result.iter().min().unwrap());
 }
 
 struct Almanac {
