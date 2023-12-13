@@ -1,4 +1,5 @@
 fn main() {
+    // This input is so simple we can just hardcode it
     let races = vec![
         Race {
             time: 41,
@@ -23,6 +24,13 @@ fn main() {
         .map(|race| race.ways_to_beat_record())
         .product();
     println!("Day 6 - Star 1: {}", star_1);
+
+    let race = Race {
+        time: 41777096,
+        max_distance: 249136211271011,
+    };
+
+    println!("Day 6 - Star 2: {}", race.ways_to_beat_record());
 }
 
 struct Race {
