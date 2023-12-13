@@ -1,4 +1,4 @@
-use std::{cmp::Ordering, str::FromStr};
+use std::{cmp::Ordering, collections::BTreeMap, str::FromStr};
 
 fn main() {}
 
@@ -47,13 +47,90 @@ impl FromStr for Hand {
     }
 }
 
+impl From<&str> for Hand {
+    fn from(s: &str) -> Self {
+        s.parse().unwrap()
+    }
+}
+
+#[derive(Debug)]
+enum HandRank {
+    HighCard,
+    OnePair,
+    TwoPair,
+    ThreeOfAKind,
+    FullHouse,
+    FourOfAKind,
+    FiveOfAKind,
+}
+
+impl HandRank {
+    fn val(&self) -> u8 {
+        match self {
+            HandRank::HighCard => 1,
+            HandRank::OnePair => 2,
+            HandRank::TwoPair => 3,
+            HandRank::ThreeOfAKind => 4,
+            HandRank::FullHouse => 5,
+            HandRank::FourOfAKind => 6,
+            HandRank::FiveOfAKind => 7,
+        }
+    }
+}
+
+impl From<&Vec<Card>> for HandRank {
+    fn from(cards: &Vec<Card>) -> Self {
+        let mut cardinality = BTreeMap::new();
+        for card in cards {
+            *cardinality.entry(card.value).or_insert(0) += 1;
+        }
+
+        match cardinality.len() {
+            1 => HandRank::FiveOfAKind,
+            2 => {
+                if cardinality.values().any(|&v| v == 4 || v == 1) {
+                    HandRank::FourOfAKind
+                } else {
+                    HandRank::FullHouse
+                }
+            }
+            3 => {
+                if cardinality.values().any(|&v| v == 3) {
+                    HandRank::ThreeOfAKind
+                } else {
+                    HandRank::TwoPair
+                }
+            }
+            _ => {
+                if cardinality.values().any(|&v| v == 2) {
+                    HandRank::OnePair
+                } else {
+                    HandRank::HighCard
+                }
+            }
+        }
+    }
+}
+
+impl PartialEq for HandRank {
+    fn eq(&self, other: &Self) -> bool {
+        self.val() == other.val()
+    }
+}
+
+impl PartialOrd for HandRank {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.val().partial_cmp(&other.val())
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
 
     #[test]
     fn test_parse_hand() {
-        let hand = "32T3K".parse::<Hand>().unwrap();
+        let hand = Hand::from("32T3K");
 
         assert_eq!(
             hand.cards,
@@ -65,5 +142,55 @@ mod test {
                 Card { value: 13 },
             ]
         );
+    }
+
+    struct HandRankTest {
+        hand: &'static str,
+        rank: HandRank,
+    }
+
+    impl HandRankTest {
+        fn execute(&self) {
+            let hand = Hand::from(self.hand);
+            assert_eq!(HandRank::from(&hand.cards), self.rank);
+        }
+    }
+
+    #[test]
+    fn test_hand_rank() {
+        let tests = vec![
+            HandRankTest {
+                hand: "33333",
+                rank: HandRank::FiveOfAKind,
+            },
+            HandRankTest {
+                hand: "3333K",
+                rank: HandRank::FourOfAKind,
+            },
+            HandRankTest {
+                hand: "333KK",
+                rank: HandRank::FullHouse,
+            },
+            HandRankTest {
+                hand: "3332K",
+                rank: HandRank::ThreeOfAKind,
+            },
+            HandRankTest {
+                hand: "3322K",
+                rank: HandRank::TwoPair,
+            },
+            HandRankTest {
+                hand: "32T3K",
+                rank: HandRank::OnePair,
+            },
+            HandRankTest {
+                hand: "AKQJ9",
+                rank: HandRank::HighCard,
+            },
+        ];
+
+        for test in tests {
+            test.execute();
+        }
     }
 }
