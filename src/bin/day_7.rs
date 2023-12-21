@@ -35,21 +35,47 @@ impl PartialOrd for Card {
 }
 
 struct Hand {
-    cards: Vec<Card>,
+    cards: [Card; 5],
+    rank: HandRank,
 }
 
 impl FromStr for Hand {
     type Err = ();
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let cards = s.chars().map(Card::from).collect::<Vec<_>>();
-        Ok(Hand { cards })
+        let cards: [Card; 5] = s.chars().map(Card::from).collect::<Vec<_>>().try_into().unwrap();
+        let rank = HandRank::from(&cards[..]);
+        Ok(Hand { cards, rank })
     }
 }
 
 impl From<&str> for Hand {
     fn from(s: &str) -> Self {
         s.parse().unwrap()
+    }
+}
+
+impl PartialEq for Hand {
+    fn eq(&self, other: &Self) -> bool {
+        self.rank == other.rank && self.cards == other.cards
+    }
+}
+
+impl PartialOrd for Hand {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        let rank_ordering = self.rank.partial_cmp(&other.rank)?;
+        if rank_ordering == Ordering::Equal {
+            for i in 0..5 {
+                let card_ordering = self.cards[i].partial_cmp(&other.cards[i])?;
+                if card_ordering != Ordering::Equal {
+                    return Some(card_ordering);
+                }
+            }
+            // This should be impossible
+            None
+        } else {
+            Some(rank_ordering)
+        }
     }
 }
 
@@ -78,8 +104,8 @@ impl HandRank {
     }
 }
 
-impl From<&Vec<Card>> for HandRank {
-    fn from(cards: &Vec<Card>) -> Self {
+impl From<&[Card]> for HandRank {
+    fn from(cards: &[Card]) -> Self {
         let mut cardinality = BTreeMap::new();
         for card in cards {
             *cardinality.entry(card.value).or_insert(0) += 1;
@@ -112,6 +138,12 @@ impl From<&Vec<Card>> for HandRank {
     }
 }
 
+impl From<&[Card; 5]> for HandRank {
+    fn from(cards: &[Card; 5]) -> Self {
+        HandRank::from(&cards[..])
+    }
+}
+
 impl PartialEq for HandRank {
     fn eq(&self, other: &Self) -> bool {
         self.val() == other.val()
@@ -134,7 +166,7 @@ mod test {
 
         assert_eq!(
             hand.cards,
-            vec![
+            [
                 Card { value: 3 },
                 Card { value: 2 },
                 Card { value: 10 },
@@ -192,5 +224,19 @@ mod test {
         for test in tests {
             test.execute();
         }
+    }
+
+    #[test]
+    fn test_hand_strength() {
+        let full_house = Hand::from("333KK");
+        let one_pair = Hand::from("32T3K");
+
+        assert!(one_pair < full_house, "Hands of a lower rank should have a lower strenght");
+
+        let lower_full_house = Hand::from("222KK");
+        assert!(lower_full_house < full_house, "When hands have the same rank the lower value should have a lower strength");
+
+        let full_house_2 = Hand::from("3K3K3");
+        assert!(full_house < full_house_2, "First higher card determines strenght when rank is equal");
     }
 }
