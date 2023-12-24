@@ -43,7 +43,12 @@ impl FromStr for Hand {
     type Err = ();
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let cards: [Card; 5] = s.chars().map(Card::from).collect::<Vec<_>>().try_into().unwrap();
+        let cards: [Card; 5] = s
+            .chars()
+            .map(Card::from)
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap();
         let rank = HandRank::from(&cards[..]);
         Ok(Hand { cards, rank })
     }
@@ -79,29 +84,15 @@ impl PartialOrd for Hand {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, PartialOrd)]
 enum HandRank {
-    HighCard,
-    OnePair,
-    TwoPair,
-    ThreeOfAKind,
-    FullHouse,
-    FourOfAKind,
-    FiveOfAKind,
-}
-
-impl HandRank {
-    fn val(&self) -> u8 {
-        match self {
-            HandRank::HighCard => 1,
-            HandRank::OnePair => 2,
-            HandRank::TwoPair => 3,
-            HandRank::ThreeOfAKind => 4,
-            HandRank::FullHouse => 5,
-            HandRank::FourOfAKind => 6,
-            HandRank::FiveOfAKind => 7,
-        }
-    }
+    HighCard = 1,
+    OnePair = 2,
+    TwoPair = 3,
+    ThreeOfAKind = 4,
+    FullHouse = 5,
+    FourOfAKind = 6,
+    FiveOfAKind = 7,
 }
 
 impl From<&[Card]> for HandRank {
@@ -141,18 +132,6 @@ impl From<&[Card]> for HandRank {
 impl From<&[Card; 5]> for HandRank {
     fn from(cards: &[Card; 5]) -> Self {
         HandRank::from(&cards[..])
-    }
-}
-
-impl PartialEq for HandRank {
-    fn eq(&self, other: &Self) -> bool {
-        self.val() == other.val()
-    }
-}
-
-impl PartialOrd for HandRank {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.val().partial_cmp(&other.val())
     }
 }
 
@@ -231,12 +210,21 @@ mod test {
         let full_house = Hand::from("333KK");
         let one_pair = Hand::from("32T3K");
 
-        assert!(one_pair < full_house, "Hands of a lower rank should have a lower strenght");
+        assert!(
+            one_pair < full_house,
+            "Hands of a lower rank should have a lower strength"
+        );
 
         let lower_full_house = Hand::from("222KK");
-        assert!(lower_full_house < full_house, "When hands have the same rank the lower value should have a lower strength");
+        assert!(
+            lower_full_house < full_house,
+            "When hands have the same rank the lower value should have a lower strength"
+        );
 
         let full_house_2 = Hand::from("3K3K3");
-        assert!(full_house < full_house_2, "First higher card determines strenght when rank is equal");
+        assert!(
+            full_house < full_house_2,
+            "First higher card determines strength when rank is equal"
+        );
     }
 }
