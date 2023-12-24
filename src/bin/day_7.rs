@@ -1,6 +1,42 @@
 use std::{cmp::Ordering, collections::BTreeMap, str::FromStr};
 
-fn main() {}
+use advent_of_code_2023::io::read_lines;
+
+fn main() {
+    let input = parse_hand_bids(read_lines("inputs/day_7.txt"));
+    println!("Total winnings: {}", total_winnings(input));
+}
+
+struct HandBid {
+    hand: Hand,
+    bid: u32,
+}
+
+impl FromStr for HandBid {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut split = s.split_whitespace();
+        let hand = split.next().unwrap().parse().unwrap();
+        let bid = split.next().unwrap().parse().unwrap();
+        Ok(HandBid { hand, bid })
+    }
+}
+
+fn parse_hand_bids<T: AsRef<str>, I: Iterator<Item = T>>(lines: I) -> Vec<HandBid> {
+    lines.map(|line| line.as_ref().parse().unwrap()).collect()
+}
+
+fn total_winnings(mut hands: Vec<HandBid>) -> u32 {
+    hands.sort_by(|a, b| a.hand.partial_cmp(&b.hand).unwrap());
+    let mut result = 0;
+
+    for (rank, hand) in hands.iter().enumerate() {
+        result += hand.bid * (rank as u32 + 1);
+    }
+
+    result
+}
 
 #[derive(Debug)]
 struct Card {
@@ -226,5 +262,17 @@ mod test {
             full_house < full_house_2,
             "First higher card determines strength when rank is equal"
         );
+    }
+
+    #[test]
+    fn test_total_winnings() {
+        let input = "32T3K 765
+        T55J5 684
+        KK677 28
+        KTJJT 220
+        QQQJA 483";
+
+        let inputs = parse_hand_bids(input.lines());
+        assert_eq!(total_winnings(inputs), 6440);
     }
 }
