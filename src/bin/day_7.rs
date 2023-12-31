@@ -4,7 +4,9 @@ use advent_of_code_2023::io::read_lines;
 
 fn main() {
     let input = parse_hand_bids(read_lines("inputs/day_7.txt"));
+    let joker_winnings = joker_total_winnings(&input);
     println!("Total winnings: {}", total_winnings(input));
+    println!("Total winnings with jokers: {}", joker_winnings);
 }
 
 struct HandBid {
@@ -38,7 +40,31 @@ fn total_winnings(mut hands: Vec<HandBid>) -> u32 {
     result
 }
 
-#[derive(Debug)]
+const JOKER_VALUE: u8 = 11;
+
+fn apply_jokers(h: &Hand) -> Hand {
+    let rank = h.joker_rank();
+    let mut cards: [Card; 5] = h.cards;
+    for c in &mut cards {
+        if c.value == JOKER_VALUE {
+            c.value = 1
+        }
+    }
+    Hand { cards, rank }
+}
+
+fn joker_total_winnings(hands: &Vec<HandBid>) -> u32 {
+    let joker_hands = hands
+        .iter()
+        .map(|hb: &HandBid| HandBid {
+            hand: apply_jokers(&hb.hand),
+            ..*hb
+        })
+        .collect::<Vec<_>>();
+    total_winnings(joker_hands)
+}
+
+#[derive(Debug, Clone, Copy)]
 struct Card {
     value: u8,
 }
@@ -50,7 +76,7 @@ impl From<char> for Card {
                 'A' => 14,
                 'K' => 13,
                 'Q' => 12,
-                'J' => 11,
+                'J' => JOKER_VALUE,
                 'T' => 10,
                 _ => c.to_digit(10).unwrap() as u8,
             },
@@ -77,7 +103,11 @@ struct Hand {
 
 impl Hand {
     fn joker_rank(&self) -> HandRank {
-        let n_jokers = self.cards.iter().filter(|&c| c.value == 11).count();
+        let n_jokers = self
+            .cards
+            .iter()
+            .filter(|&c| c.value == JOKER_VALUE)
+            .count();
         if n_jokers == 0 {
             self.rank
         } else {
@@ -96,7 +126,7 @@ impl Hand {
                         HandRank::FourOfAKind
                     }
                 }
-                (1, 4) => HandRank::TwoPair,
+                (1, 4) => HandRank::ThreeOfAKind,
                 (1, 5) => HandRank::OnePair,
                 _ => HandRank::HighCard,
             }
@@ -312,16 +342,53 @@ mod test {
 
     #[test]
     fn test_joker_hand_strength() {
-        assert_eq!(Hand::from("32T3K").joker_rank(), HandRank::OnePair);
-        assert_eq!(Hand::from("KK677").joker_rank(), HandRank::TwoPair);
+        let tests = [
+            // Example test cases
+            ("32T3K", HandRank::OnePair),
+            ("KK677", HandRank::TwoPair),
+            ("T55J5", HandRank::FourOfAKind),
+            ("KTJJT", HandRank::FourOfAKind),
+            ("QQQJA", HandRank::FourOfAKind),
+            // Five of a kind
+            ("JJJJJ", HandRank::FiveOfAKind),
+            ("JJJJ2", HandRank::FiveOfAKind),
+            ("JJJ33", HandRank::FiveOfAKind),
+            ("JJ444", HandRank::FiveOfAKind),
+            ("J5555", HandRank::FiveOfAKind),
+            // Four of a kind
+            ("JJJ23", HandRank::FourOfAKind),
+            // Full house
+            ("J2233", HandRank::FullHouse),
+            // Three of a kind
+            ("JJ234", HandRank::ThreeOfAKind),
+            ("J2234", HandRank::ThreeOfAKind),
+            // Two pair - not possible with a Joker
+            ("K2233", HandRank::TwoPair),
+            // One pair
+            ("J2345", HandRank::OnePair),
+        ];
 
-        for four_kind in ["T55J5", "KTJJT", "QQQJA"] {
+        for test in tests {
+            let hand = Hand::from(test.0);
             assert_eq!(
-                Hand::from(four_kind).joker_rank(),
-                HandRank::FourOfAKind,
-                "{} should be four of a kind",
-                four_kind
+                hand.joker_rank(),
+                test.1,
+                "{} should have rank {:?}",
+                test.0,
+                test.1
             );
         }
+    }
+
+    #[test]
+    fn test_joker_total_winnings() {
+        let input = "32T3K 765
+        T55J5 684
+        KK677 28
+        KTJJT 220
+        QQQJA 483";
+
+        let inputs = parse_hand_bids(input.lines());
+        assert_eq!(joker_total_winnings(&inputs), 5905);
     }
 }
