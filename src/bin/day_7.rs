@@ -75,6 +75,13 @@ struct Hand {
     rank: HandRank,
 }
 
+impl Hand {
+    fn joker_rank(&self) -> HandRank {
+        let n_jokers = self.cards.iter().filter(|&c| c.value == 14).count();
+        self.rank
+    }
+}
+
 impl FromStr for Hand {
     type Err = ();
 
@@ -120,7 +127,7 @@ impl PartialOrd for Hand {
     }
 }
 
-#[derive(Debug, PartialEq, PartialOrd)]
+#[derive(Debug, PartialEq, PartialOrd, Clone, Copy)]
 enum HandRank {
     HighCard = 1,
     OnePair = 2,
@@ -274,5 +281,10 @@ mod test {
 
         let inputs = parse_hand_bids(input.lines());
         assert_eq!(total_winnings(inputs), 6440);
+    }
+
+    #[test]
+    fn test_joker_hand_strength() {
+        assert_eq!(Hand::from("32T3K").joker_rank(), HandRank::OnePair);
     }
 }
