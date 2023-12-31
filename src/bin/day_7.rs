@@ -77,8 +77,30 @@ struct Hand {
 
 impl Hand {
     fn joker_rank(&self) -> HandRank {
-        let n_jokers = self.cards.iter().filter(|&c| c.value == 14).count();
-        self.rank
+        let n_jokers = self.cards.iter().filter(|&c| c.value == 11).count();
+        if n_jokers == 0 {
+            self.rank
+        } else {
+            let cardinality = cardinality(&self.cards[..]);
+            match (n_jokers, cardinality.len()) {
+                (5, _) => HandRank::FiveOfAKind,
+                (4, _) => HandRank::FiveOfAKind,
+                (_, 2) => HandRank::FiveOfAKind,
+                (3, 3) => HandRank::FourOfAKind,
+                (2, 3) => HandRank::FourOfAKind,
+                (2, 4) => HandRank::ThreeOfAKind,
+                (1, 3) => {
+                    if self.rank == HandRank::TwoPair {
+                        HandRank::FullHouse
+                    } else {
+                        HandRank::FourOfAKind
+                    }
+                }
+                (1, 4) => HandRank::TwoPair,
+                (1, 5) => HandRank::OnePair,
+                _ => HandRank::HighCard,
+            }
+        }
     }
 }
 
@@ -127,6 +149,14 @@ impl PartialOrd for Hand {
     }
 }
 
+fn cardinality(cards: &[Card]) -> BTreeMap<u8, u8> {
+    let mut cardinality = BTreeMap::new();
+    for card in cards {
+        *cardinality.entry(card.value).or_insert(0) += 1;
+    }
+    cardinality
+}
+
 #[derive(Debug, PartialEq, PartialOrd, Clone, Copy)]
 enum HandRank {
     HighCard = 1,
@@ -140,10 +170,7 @@ enum HandRank {
 
 impl From<&[Card]> for HandRank {
     fn from(cards: &[Card]) -> Self {
-        let mut cardinality = BTreeMap::new();
-        for card in cards {
-            *cardinality.entry(card.value).or_insert(0) += 1;
-        }
+        let cardinality = cardinality(cards);
 
         match cardinality.len() {
             1 => HandRank::FiveOfAKind,
@@ -286,5 +313,15 @@ mod test {
     #[test]
     fn test_joker_hand_strength() {
         assert_eq!(Hand::from("32T3K").joker_rank(), HandRank::OnePair);
+        assert_eq!(Hand::from("KK677").joker_rank(), HandRank::TwoPair);
+
+        for four_kind in ["T55J5", "KTJJT", "QQQJA"] {
+            assert_eq!(
+                Hand::from(four_kind).joker_rank(),
+                HandRank::FourOfAKind,
+                "{} should be four of a kind",
+                four_kind
+            );
+        }
     }
 }
